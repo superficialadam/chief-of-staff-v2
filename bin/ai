@@ -1,0 +1,42 @@
+#!/usr/bin/env ruby
+ENV["RAILS_ENV"] ||= "development"
+require_relative "../config/environment"
+
+require "tty-reader"
+require "pastel"
+require "tty-box"
+
+include Ai::ConsoleColors
+
+reader = TTY::Reader.new
+pastel  = Pastel.new(enabled: $stdout.tty?)
+
+puts pastel.bold("Chief of Staff REPL — Ctrl+C to quit\n")
+
+orchestrator = Ai::Orchestrator.new
+
+loop do
+  begin
+    input = reader.read_line(pastel.bold("> "))
+    next if input.strip.empty?
+
+    # --- measure "thinking" time (just the LLM call) ---
+    t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    result = orchestrator.run!(input)   # => { agent:, text: }
+    t1 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    ms = ((t1 - t0) * 1000).round
+
+    agent = result[:agent].to_s
+    text  = result[:text].to_s.strip
+
+    # --- pretty box with colored agent title ---
+    puts Ai::ConsoleColors.colored_badge(agent) + "  " + text
+    puts Ai::ConsoleColors.dim("…thinking time: #{ms} ms")
+  rescue Interrupt
+    puts "\nbye"; exit 0
+  rescue KeyError
+    warn pastel.red("Missing OPENAI_API_KEY. export OPENAI_API_KEY=sk-..."); exit 1
+  rescue => e
+    warn pastel.red("[error] #{e.class}: #{e.message}")
+  end
+end
