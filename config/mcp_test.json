@@ -1,0 +1,14 @@
+{
+  "servers": [
+    {
+      "alias": "filesystem",
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/adamwittsell/CODE/vibeing/chief-of-staff-v2"
+      ]
+    }
+  ]
+}

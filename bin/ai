@@ -1,37 +1,188 @@
 #!/usr/bin/env ruby
-# bin/ai
-require_relative "../config/environment"
+# bin/ai - HTTP client for Chief of Staff AI server
 
+require "net/http"
+require "json"
 require "readline"
 require "io/console"
+require "uri"
+require "optparse"
 
-# load console colors from app/lib/ai/console_colors.rb
-require_relative "../app/lib/ai/console_colors"
+# Try to load pastel for colors if available
+begin
+  require "pastel"
+  require "zlib"
+  
+  # Inline console colors module (standalone version)
+  module ConsoleColors
+    PALETTE = %i[bright_magenta bright_blue bright_green bright_yellow cyan].freeze
+    module_function
 
-puts "Chief of Staff REPL — Ctrl+C to quit"
+    def pastel
+      @pastel ||= Pastel.new(enabled: $stdout.tty?)
+    end
 
-orchestrator = Ai::Orchestrator.new
+    def color_for(name)
+      PALETTE[Zlib.crc32(name.to_s) % PALETTE.size]
+    end
 
+    def colored_badge(name)
+      color = color_for(name)
+      pastel.on_black.public_send(color).detach.(" #{name.upcase} ")
+    end
+
+    def dim(s) = pastel.dim(s)
+  end
+  
+  COLORS_AVAILABLE = true
+rescue LoadError
+  COLORS_AVAILABLE = false
+  
+  # Fallback when pastel is not available
+  module ConsoleColors
+    module_function
+    def colored_badge(name) = "[#{name.upcase}]"
+    def dim(s) = s
+  end
+end
+
+# Parse command line options
+options = {
+  host: "localhost",
+  port: 3000,
+  ssl: false
+}
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: #{$0} [options]"
+  
+  opts.on("-h", "--host HOST", "Rails server host (default: localhost)") do |h|
+    options[:host] = h
+  end
+  
+  opts.on("-p", "--port PORT", Integer, "Rails server port (default: 3000)") do |p|
+    options[:port] = p
+  end
+  
+  opts.on("-s", "--ssl", "Use HTTPS instead of HTTP") do
+    options[:ssl] = true
+  end
+  
+  opts.on("--help", "Show this help message") do
+    puts opts
+    exit
+  end
+end.parse!
+
+# Build base URL
+protocol = options[:ssl] ? "https" : "http"
+base_url = "#{protocol}://#{options[:host]}:#{options[:port]}"
+
+# Check server health
+def check_server_health(base_url)
+  uri = URI.parse("#{base_url}/ai/health")
+  http = Net::HTTP.new(uri.host, uri.port)
+  http.use_ssl = uri.scheme == "https"
+  http.open_timeout = 10
+  http.read_timeout = 15
+  
+  response = http.get(uri.path)
+  # Accept any HTTP response as indication server is running
+  # Even 500 errors mean the server is up but may have internal issues
+  !response.nil? && response.code.to_i > 0
+rescue => e
+  false
+end
+
+# Send message to server
+def send_message(base_url, message)
+  uri = URI.parse("#{base_url}/ai/chat")
+  http = Net::HTTP.new(uri.host, uri.port)
+  http.use_ssl = uri.scheme == "https"
+  http.read_timeout = 120 # Allow longer timeout for AI processing
+  
+  request = Net::HTTP::Post.new(uri.path)
+  request["Content-Type"] = "application/json"
+  request.body = JSON.generate({ message: message })
+  
+  response = http.request(request)
+  
+  if response.code == "200"
+    JSON.parse(response.body)
+  else
+    error_data = JSON.parse(response.body) rescue { "error" => response.body }
+    raise "Server error (#{response.code}): #{error_data["error"]}"
+  end
+end
+
+# Main REPL loop
+puts ConsoleColors.dim("Chief of Staff AI Client — Ctrl+C to quit")
+puts ConsoleColors.dim("Connecting to #{base_url}...")
+
+# Check if server is running
+if check_server_health(base_url)
+  puts ConsoleColors.dim("✓ Connected to server")
+else
+  puts ConsoleColors.dim("✗ Cannot connect to server at #{base_url}")
+  puts ConsoleColors.dim("Make sure the Rails server is running: rails s")
+  exit 1
+end
+
+puts ""
+
+# REPL loop
 loop do
   begin
     input = Readline.readline("> ", true)
-    break if input.nil? || input.strip.empty?
-
-    result = orchestrator.run!(input)
-
-    # Expect result to be a hash like { agent: "llm", text: "..." }
-    agent_name = result[:agent].to_s.upcase
-    agent_text = result[:text].to_s
-
-    # colorize / box agent name
-    label = Ai::ConsoleColors.colored_badge(agent_name)
+    
+    # Handle empty input or Ctrl+D
+    if input.nil? || input.strip.empty?
+      next if input&.strip&.empty?
+      break if input.nil?
+    end
+    
+    # Special commands
+    case input.strip.downcase
+    when "exit", "quit", "q"
+      puts ConsoleColors.dim("Goodbye!")
+      break
+    when "health"
+      puts ConsoleColors.dim("Checking server health...")
+      if check_server_health(base_url)
+        puts ConsoleColors.dim("✓ Server is healthy")
+      else
+        puts ConsoleColors.dim("✗ Server is not responding")
+      end
+      next
+    when "help", "?"
+      puts ConsoleColors.dim("Commands:")
+      puts ConsoleColors.dim("  exit, quit, q - Exit the REPL")
+      puts ConsoleColors.dim("  health        - Check server health")
+      puts ConsoleColors.dim("  help, ?       - Show this help")
+      puts ConsoleColors.dim("")
+      puts ConsoleColors.dim("Or type any message to chat with the AI assistant")
+      next
+    end
+    
+    # Send message to server
+    result = send_message(base_url, input)
+    
+    # Display response
+    agent_name = result["agent"] || "unknown"
+    agent_text = result["text"] || result["error"] || "No response"
+    
+    label = ConsoleColors.colored_badge(agent_name)
     puts "#{label} #{agent_text}"
-
+    
   rescue Interrupt
-    puts "\nExiting."
+    puts "\n" + ConsoleColors.dim("Exiting...")
     exit
+  rescue Errno::ECONNREFUSED
+    puts ConsoleColors.dim("✗ Connection refused. Is the Rails server running?")
+    puts ConsoleColors.dim("Start it with: rails s")
+  rescue Errno::EPIPE, EOFError
+    puts ConsoleColors.dim("✗ Lost connection to server")
   rescue => e
-    warn "Error: #{e.class} — #{e.message}"
-    warn e.backtrace.first(3).join("\n")
+    puts ConsoleColors.dim("Error: #{e.message}")
   end
 end
