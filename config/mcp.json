@@ -1,0 +1,26 @@
+{
+  "servers": [
+    {
+      "alias": "filesystem",
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/adamwittsell/CODE/vibeing/chief-of-staff-v2"
+      ]
+    },
+    {
+      "alias": "calendar",
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@cocal/google-calendar-mcp"
+      ],
+      "env": {
+        "GOOGLE_OAUTH_CREDENTIALS": "/Users/adamwittsell/CODE/vibeing/chief-of-staff-v2/credentials.json"
+      }
+    }
+  ]
+}
