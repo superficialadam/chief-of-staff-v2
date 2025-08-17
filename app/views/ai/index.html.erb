@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chief of Staff AI Chat</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    #chat-container {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      height: 400px;
+      overflow-y: auto;
+      padding: 20px;
+      margin-bottom: 20px;
+      background: #f9f9f9;
+    }
+    .message {
+      margin-bottom: 15px;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    .user-message {
+      background: #007bff;
+      color: white;
+      text-align: right;
+    }
+    .ai-message {
+      background: white;
+      border: 1px solid #ddd;
+    }
+    .agent-name {
+      font-weight: bold;
+      color: #666;
+      font-size: 0.9em;
+      margin-bottom: 5px;
+    }
+    #input-form {
+      display: flex;
+      gap: 10px;
+    }
+    #message-input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+    #send-button {
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    #send-button:hover {
+      background: #0056b3;
+    }
+    #send-button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .error {
+      color: red;
+      padding: 10px;
+      background: #fee;
+      border-radius: 5px;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Chief of Staff AI Chat</h1>
+  
+  <div id="chat-container"></div>
+  
+  <form id="input-form">
+    <input type="text" id="message-input" placeholder="Type your message..." autofocus>
+    <button type="submit" id="send-button">Send</button>
+  </form>
+  
+  <script>
+    const chatContainer = document.getElementById('chat-container');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const form = document.getElementById('input-form');
+    
+    function addMessage(content, isUser, agentName = null) {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+      
+      if (agentName && !isUser) {
+        const agentDiv = document.createElement('div');
+        agentDiv.className = 'agent-name';
+        agentDiv.textContent = agentName.toUpperCase();
+        messageDiv.appendChild(agentDiv);
+      }
+      
+      const textDiv = document.createElement('div');
+      textDiv.textContent = content;
+      messageDiv.appendChild(textDiv);
+      
+      chatContainer.appendChild(messageDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    function showError(message) {
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'error';
+      errorDiv.textContent = `Error: ${message}`;
+      chatContainer.appendChild(errorDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    async function sendMessage() {
+      const message = messageInput.value.trim();
+      if (!message) return;
+      
+      // Add user message to chat
+      addMessage(message, true);
+      
+      // Clear input and disable while sending
+      messageInput.value = '';
+      sendButton.disabled = true;
+      
+      try {
+        const response = await fetch('/ai/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message: message })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          addMessage(data.text || 'No response', false, data.agent);
+        } else {
+          showError(data.error || 'Failed to get response');
+        }
+      } catch (error) {
+        showError(`Network error: ${error.message}`);
+      } finally {
+        sendButton.disabled = false;
+        messageInput.focus();
+      }
+    }
+    
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      sendMessage();
+    });
+    
+    // Check health on load
+    fetch('/ai/health')
+      .then(res => res.json())
+      .then(data => {
+        console.log('AI Health:', data);
+        if (data.mcp && data.mcp.status === 'connected') {
+          console.log(`MCP connected with ${data.mcp.tools_count} tools`);
+        }
+      })
+      .catch(err => console.error('Health check failed:', err));
+  </script>
+</body>
+</html>

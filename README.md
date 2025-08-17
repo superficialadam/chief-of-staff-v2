@@ -1,24 +1,84 @@
-# README
+# Chief of Staff v2
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+An AI assistant application with Model Context Protocol (MCP) integration for tool usage.
 
-Things you may want to cover:
+## Setup
 
-* Ruby version
+### Prerequisites
+* Ruby 3.4.2
+* Rails 8.0.2
+* Node.js (for npx and MCP servers)
+* OpenAI API key
 
-* System dependencies
+### Installation
 
-* Configuration
+1. Install dependencies:
+```bash
+bundle install
+```
 
-* Database creation
+2. Set up environment variables:
+```bash
+export OPENAI_API_KEY="your-openai-api-key"
+```
 
-* Database initialization
+3. Configure MCP servers in `config/mcp.json` (currently configured with filesystem server)
 
-* How to run the test suite
+### TODO(human)
+Please implement the environment configuration for the OpenAI API key. You can either:
+1. Create a `.env` file with `OPENAI_API_KEY=your-key-here` and use the dotenv-rails gem
+2. Use Rails credentials: `rails credentials:edit` and add your OpenAI key
+3. Export it in your shell: `export OPENAI_API_KEY="your-key"`
 
-* Services (job queues, cache servers, search engines, etc.)
+Choose the method that works best for your workflow.
 
-* Deployment instructions
+## Usage
 
-* ...
+### Web Interface (Rails Server)
+
+1. Start the Rails server:
+```bash
+rails s
+```
+
+2. Open your browser to http://localhost:3000
+3. Chat with the AI assistant through the web interface
+
+### Command Line Interface
+
+Use the `bin/ai` script for a REPL interface:
+```bash
+ruby bin/ai
+```
+
+Type your messages and press Enter. Use Ctrl+C to exit.
+
+## Architecture
+
+- **Ai::Orchestrator** - Manages the AI agent and MCP integration
+- **Ai::McpManager** - Handles MCP server connections and tool management
+- **LlmAgent** - OpenAI integration with MCP tool support
+- **AiController** - Web API endpoints for chat functionality
+
+## MCP Integration
+
+The application uses the `ruby-mcp-client` gem to connect to MCP servers. Tools are automatically:
+- Discovered from configured MCP servers
+- Converted to OpenAI tool format
+- Made available to the LLM for execution
+- Executed when the LLM requests them
+
+### Configured MCP Servers
+
+- **filesystem** - Provides file system access tools (read, write, list files)
+
+You can add more MCP servers by editing `config/mcp.json`.
+
+## Development
+
+To add new MCP servers:
+1. Edit `config/mcp.json`
+2. Add server configuration (stdio, SSE, or HTTP)
+3. Restart the Rails server or bin/ai script
+
+The MCP manager will automatically discover and integrate new tools.
