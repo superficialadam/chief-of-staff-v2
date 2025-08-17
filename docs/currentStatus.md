@@ -472,5 +472,55 @@ chief-of-staff-v2/
 
 ---
 
+## Changelog
+
+### August 17, 2025 - 23:42 CET
+
+**🔄 CLI Architecture Transformation: Standalone to Client-Server**
+
+**Changes Made:**
+- **Transformed `bin/ai` from standalone process to HTTP client**
+  - Before: Loaded entire Rails environment in REPL session
+  - After: Lightweight HTTP client connecting to running Rails server
+  - Added command-line options: `--host`, `--port`, `--ssl`, `--help`
+  - Added built-in commands: `health`, `help`, `exit`
+  - Improved error handling for network issues and server errors
+
+- **Enhanced AiController for persistent connections**
+  - Implemented singleton Orchestrator pattern to maintain state
+  - MCP server connections now persist across requests
+  - Better error logging and debugging support
+
+- **Fixed Rails 8 logging compatibility issue**
+  - Resolved `undefined method 'push_tags'` error in development environment
+  - Added custom logger configuration to bypass problematic tagged logging
+  - Chat functionality now works end-to-end
+
+- **Improved client features**
+  - Connection health checking with configurable timeouts
+  - Colored output with graceful fallback when Pastel gem unavailable
+  - Proper handling of server responses and error states
+  - Maintained original REPL user experience
+
+**New Workflow:**
+1. Start Rails server: `rails s`
+2. Connect client: `bin/ai` (in separate terminal)
+3. Chat with AI assistant using full MCP tool capabilities
+
+**Benefits:**
+- Reduced memory footprint (client no longer loads Rails environment)
+- Faster startup time for REPL sessions
+- Persistent MCP server connections improve response times
+- Multiple clients can connect to same server simultaneously
+- Clear separation between server and client concerns
+
+**Files Modified:**
+- `bin/ai` - Complete rewrite as HTTP client
+- `app/controllers/ai_controller.rb` - Added singleton Orchestrator
+- `config/environments/development.rb` - Fixed Rails 8 logging
+- `credentials.json` - Added for MCP calendar server testing
+
+---
+
 This documentation represents the current state of the Chief of Staff v2 implementation as of August 17, 2025.
 
