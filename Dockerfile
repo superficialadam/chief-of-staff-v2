@@ -47,8 +47,7 @@ RUN apt-get update -qq && \
 
 # Install gems first for better caching
 COPY Gemfile Gemfile.lock ./
-RUN --mount=type=cache,target=${BUNDLE_PATH} \
-    bundle install && \
+RUN bundle install && \
     rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git
 
 # If bootsnap is present in the bundle, precompile its caches for gems
