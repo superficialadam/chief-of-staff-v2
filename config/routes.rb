@@ -10,6 +10,9 @@ Rails.application.routes.draw do
   post "ai/chat" => "ai#chat"
   post "ai/stream" => "ai#stream"
   get "ai/health" => "ai#health"
+  
+  # Telegram webhook
+  post "webhooks/telegram" => "telegram#webhook"
 
   # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
   # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest

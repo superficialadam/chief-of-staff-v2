@@ -1,0 +1,35 @@
+# Development configuration for Kamal with reverse tunnel support
+# Inherits from deploy.yml and adds dev-specific settings
+
+# Use the base configuration
+<<: !ruby/object:YAML.load_file config/deploy.yml
+
+# Override proxy settings for development with reverse tunnel
+proxy:
+  host: cos.dev.its75am.com
+  healthcheck:
+    path: /up
+    interval: 5
+    timeout: 2
+  # Additional routing for development mode
+  # The webhook path will be forwarded through the reverse tunnel
+  # Server runs reverse tunnel on port 4000 -> Mac localhost:3000
+  deploy_options:
+    network: host
+  ssl: true
+  
+# Development-specific environment variables
+env:
+  clear:
+    RAILS_ENV: development
+    RAILS_LOG_TO_STDOUT: "1"
+    RAILS_SERVE_STATIC_FILES: "1"
+    PORT: "80"
+    SOLID_QUEUE_IN_PUMA: "true"
+    # Enable development mode features
+    TELEGRAM_WEBHOOK_VERIFICATION: "disabled"  # For easier testing
+    
+# Note: When in dev mode, you'll need to:
+# 1. Start Rails locally: rails s
+# 2. Set up reverse SSH tunnel: ssh -R 4000:localhost:3000 root@65.21.198.81
+# 3. Configure nginx/Kamal proxy to forward /webhooks/telegram to 127.0.0.1:4000

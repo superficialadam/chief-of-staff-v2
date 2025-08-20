@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# Script to add your SSH key to the server for tunnel access
+
+set -e
+
+SERVER_IP="65.21.198.81"
+SERVER_USER="root"
+SSH_KEY_FILE="$HOME/.ssh/id_ed25519.pub"
+
+echo "🔑 Setting up SSH key for tunnel access"
+echo ""
+
+# Check if SSH key exists
+if [ ! -f "$SSH_KEY_FILE" ]; then
+    echo "❌ SSH key not found at: $SSH_KEY_FILE"
+    echo ""
+    echo "Generate one with:"
+    echo "  ssh-keygen -t ed25519 -C \"$(whoami)@$(hostname)\""
+    exit 1
+fi
+
+# Show the public key
+echo "📋 Your public key:"
+cat "$SSH_KEY_FILE"
+echo ""
+
+echo "To add this key to your server, you have a few options:"
+echo ""
+echo "1. If you have password access to the server:"
+echo "   ssh-copy-id -i $SSH_KEY_FILE ${SERVER_USER}@${SERVER_IP}"
+echo ""
+echo "2. If you have another way to access the server:"
+echo "   cat $SSH_KEY_FILE | ssh ${SERVER_USER}@${SERVER_IP} 'cat >> ~/.ssh/authorized_keys'"
+echo ""
+echo "3. Through your server provider's control panel:"
+echo "   Copy the key above and add it to the authorized keys"
+echo ""
+echo "4. If you have root access through another method:"
+echo "   Paste this command on the server:"
+echo "   echo '$(cat $SSH_KEY_FILE)' >> ~/.ssh/authorized_keys"
+echo ""
+
+# Test if key is already working
+echo "Testing current SSH access..."
+if ssh -o ConnectTimeout=5 -o BatchMode=yes ${SERVER_USER}@${SERVER_IP} exit 2>/dev/null; then
+    echo "✅ SSH key is already working!"
+    echo ""
+    echo "You can now run:"
+    echo "  bin/telegram_dev_tunnel"
+else
+    echo "❌ SSH key not yet authorized on server"
+    echo ""
+    echo "After adding the key, test with:"
+    echo "  ssh ${SERVER_USER}@${SERVER_IP} 'echo SSH access works'"
+fi
