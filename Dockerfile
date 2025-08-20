@@ -3,7 +3,7 @@
 
 # Make sure RUBY_VERSION matches your .ruby-version
 ARG RUBY_VERSION=3.4.2
-# Change this to force rebuild caches
+# Bump to force cache busts when iterating
 ARG CACHE_BUSTER=1
 
 ########################
@@ -12,7 +12,7 @@ ARG CACHE_BUSTER=1
 FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
 WORKDIR /rails
 
-# Runtime system libraries, including PostgreSQL runtime for pg gem
+# Runtime libs incl. PostgreSQL runtime for pg gem
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y \
       curl \
@@ -22,18 +22,18 @@ RUN apt-get update -qq && \
       libpq5 && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
-# Production ENV for bundler and Rails
+# Production bundler/Rails env
 ENV RAILS_ENV="production" \
     BUNDLE_DEPLOYMENT="1" \
     BUNDLE_PATH="/usr/local/bundle" \
     BUNDLE_WITHOUT="development:test"
 
 #######################
-# Build — compile stage #
+# Build — compile stage
 #######################
 FROM base AS build
 
-# Build system libraries for gems + Node for asset builds
+# Build deps for native gems + Node for asset builds (if using js/css bundling)
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y \
       build-essential \
@@ -45,7 +45,7 @@ RUN apt-get update -qq && \
       npm && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
-# First cache gems layer
+# Install gems first for better caching
 COPY Gemfile Gemfile.lock ./
 RUN --mount=type=cache,target=${BUNDLE_PATH} \
     bundle install && \
@@ -58,29 +58,27 @@ COPY . .
 # Precompile bootsnap cache
 RUN bundle exec bootsnap precompile app/ lib/
 
-# Optionally compile JS/CSS if using bundling
+# If using js/css bundling these will no-op when no package.json
 RUN test -f package.json && npm ci || true
 RUN test -f package.json && npm run build || true
 
-# Precompile Rails assets without the real secret key
-ENV SECRET_KEY_BASE_DUMMY=1
-RUN bin/rails assets:precompile
+# Precompile Rails assets WITHOUT real master key (inline env to appease linter)
+RUN SECRET_KEY_BASE_DUMMY=1 bin/rails assets:precompile
 
 ############################
-# Debug stage (for fast testing)
+# Debug stage (optional, fast local investigation)
 ############################
 FROM build AS debug
-ENV SECRET_KEY_BASE_DUMMY=1
 CMD ["/bin/bash"]
 
 #######################
-# Final — production image #
+# Final — production image
 #######################
 FROM base
 COPY --from=build ${BUNDLE_PATH} ${BUNDLE_PATH}
 COPY --from=build /rails /rails
 
-# Non-root app user for security
+# Non-root user
 RUN groupadd --system --gid 1000 rails && \
     useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash rails && \
     chown -R rails:rails db log storage tmp
