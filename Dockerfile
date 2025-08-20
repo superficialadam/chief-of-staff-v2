@@ -1,80 +1,91 @@
 # syntax=docker/dockerfile:1
 # check=error=true
-# This Dockerfile is designed for production, not development. Use with Kamal or build'n'run by hand:
-#   docker build -t chief_of_staff_v2 .
-#   docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name chief_of_staff_v2 chief_of_staff_v2
-#
-# For a containerized dev environment, see Dev Containers:
-# https://guides.rubyonrails.org/getting_started_with_devcontainer.html
 
-# Make sure RUBY_VERSION matches the Ruby version in .ruby-version
+# Make sure RUBY_VERSION matches your .ruby-version
 ARG RUBY_VERSION=3.4.2
-FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
+# Change this to force rebuild caches
+ARG CACHE_BUSTER=1
 
-# Rails app lives here
+########################
+# Base — runtime image #
+########################
+FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
 WORKDIR /rails
 
-# Install base packages (include libpq5 for pg runtime)
+# Runtime system libraries, including PostgreSQL runtime for pg gem
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y curl libjemalloc2 libvips sqlite3 libpq5 && \
+    apt-get install --no-install-recommends -y \
+      curl \
+      libjemalloc2 \
+      libvips \
+      sqlite3 \
+      libpq5 && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
-# Set production environment
+# Production ENV for bundler and Rails
 ENV RAILS_ENV="production" \
     BUNDLE_DEPLOYMENT="1" \
     BUNDLE_PATH="/usr/local/bundle" \
     BUNDLE_WITHOUT="development:test"
 
-# Throw-away build stage to reduce size of final image
+#######################
+# Build — compile stage #
+#######################
 FROM base AS build
 
-# Install packages needed to build gems (include libpq-dev for pg compile)
+# Build system libraries for gems + Node for asset builds
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential git libyaml-dev pkg-config libpq-dev && \
+    apt-get install --no-install-recommends -y \
+      build-essential \
+      git \
+      libyaml-dev \
+      pkg-config \
+      libpq-dev \
+      nodejs \
+      npm && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
-# Install Node.js and Yarn for JavaScript asset compilation
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh && \
-    bash nodesource_setup.sh && \
-    apt-get install -y nodejs && \
-    npm install --global yarn && \
-    rm -f nodesource_setup.sh
-
-# Install application gems
+# First cache gems layer
 COPY Gemfile Gemfile.lock ./
-RUN bundle install && \
+RUN --mount=type=cache,target=${BUNDLE_PATH} \
+    bundle install && \
     rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
     bundle exec bootsnap precompile --gemfile
 
-# Copy package.json and install JavaScript dependencies (if they exist)
-COPY package.json yarn.lock* ./
-RUN if [ -f "package.json" ]; then yarn install --frozen-lockfile; fi
-
-# Copy application code
+# Copy app code
 COPY . .
 
-# Precompile bootsnap code for faster boot times
+# Precompile bootsnap cache
 RUN bundle exec bootsnap precompile app/ lib/
 
-# Precompile assets for production without requiring secret RAILS_MASTER_KEY
-RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
+# Optionally compile JS/CSS if using bundling
+RUN test -f package.json && npm ci || true
+RUN test -f package.json && npm run build || true
 
-# Final stage for app image
+# Precompile Rails assets without the real secret key
+ENV SECRET_KEY_BASE_DUMMY=1
+RUN bin/rails assets:precompile
+
+############################
+# Debug stage (for fast testing)
+############################
+FROM build AS debug
+ENV SECRET_KEY_BASE_DUMMY=1
+CMD ["/bin/bash"]
+
+#######################
+# Final — production image #
+#######################
 FROM base
-
-# Copy built artifacts: gems, application
-COPY --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
+COPY --from=build ${BUNDLE_PATH} ${BUNDLE_PATH}
 COPY --from=build /rails /rails
 
-# Run and own only the runtime files as a non-root user for security
+# Non-root app user for security
 RUN groupadd --system --gid 1000 rails && \
-    useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash && \
+    useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash rails && \
     chown -R rails:rails db log storage tmp
-USER 1000:1000
+USER rails
 
-# Entrypoint prepares the database.
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]
-
-# Start server via Thruster by default, this can be overwritten at runtime
 EXPOSE 80
 CMD ["./bin/thrust", "./bin/rails", "server"]
