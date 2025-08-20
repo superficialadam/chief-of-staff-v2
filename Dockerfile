@@ -2,7 +2,7 @@
 # check=error=true
 
 # Make sure RUBY_VERSION matches your .ruby-version
-ARG RUBY_VERSION=3.4.2
+ARG RUBY_VERSION=3.3.6
 # Bump to force cache busts when iterating
 ARG CACHE_BUSTER=1
 

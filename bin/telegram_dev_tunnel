@@ -5,8 +5,8 @@
 
 set -e
 
-SERVER_IP="${SERVER_IP:-65.21.198.81}"
-SERVER_USER="${SERVER_USER:-root}"
+SERVER_HOST="${SERVER_HOST:-hetzner}"
+SERVER_USER="${SERVER_USER:-adam}"
 LOCAL_PORT="${LOCAL_PORT:-3000}"
 REMOTE_PORT="${REMOTE_PORT:-4000}"
 SSH_KEY="${SSH_KEY:-}"  # Optional: specify SSH key file
@@ -14,7 +14,7 @@ SSH_KEY="${SSH_KEY:-}"  # Optional: specify SSH key file
 echo "🚇 Setting up reverse SSH tunnel for Telegram webhook development"
 echo ""
 echo "Configuration:"
-echo "  Server: ${SERVER_USER}@${SERVER_IP}"
+echo "  Server: ${SERVER_USER}@${SERVER_HOST}"
 echo "  Remote port: ${REMOTE_PORT} (on server)"
 echo "  Local port: ${LOCAL_PORT} (your Rails app)"
 echo ""
@@ -49,7 +49,7 @@ $SSH_CMD -R ${REMOTE_PORT}:localhost:${LOCAL_PORT} \
     -o ServerAliveCountMax=3 \
     -N \
     -v \
-    ${SERVER_USER}@${SERVER_IP}
+    ${SERVER_HOST}
 
 echo ""
 echo "Tunnel closed."
