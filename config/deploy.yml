@@ -2,7 +2,7 @@
 service: cos
 
 # Your container image on GHCR
-image: ghcr.io/superficialadam/chief-of-staff-v2:latest
+image: ghcr.io/superficialadam/chief-of-staff-v2
 
 # Deploy to these servers.
 servers:
@@ -31,13 +31,13 @@ env:
     PORT: "80"                 # Dockerfile exposes 80; Rails starts via thrust
     SOLID_QUEUE_IN_PUMA: "true" # simple single-box setup for now
   secret:
-    RAILS_MASTER_KEY: <%= ENV["RAILS_MASTER_KEY"] %>
-    OPENAI_PASSWORD: <%= ENV["OPENAI_PASSWORD"] %>
-    PGHOST: <%= ENV["PGHOST"] %>
-    PGPORT: <%= ENV["PGPORT"] %>
-    PGDATABASE: <%= ENV["PGDATABASE"] %>
-    PGUSER: <%= ENV["PGUSER"] %>
-    PGPASSWORD: <%= ENV["PGPASSWORD"] %>
+    - RAILS_MASTER_KEY
+    - OPENAI_PASSWORD
+    - PGHOST
+    - PGPORT
+    - PGDATABASE
+    - PGUSER
+    - PGPASSWORD
 
 # Persist Active Storage uploads (host path you can back up)
 volumes:
