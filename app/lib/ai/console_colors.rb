@@ -1,5 +1,9 @@
 # app/lib/ai/console_colors.rb
-require "pastel"
+begin
+  require "pastel"
+rescue LoadError
+  # pastel not available in production
+end
 require "zlib"
 
 module Ai
@@ -8,7 +12,17 @@ module Ai
     module_function
 
     def pastel
-      @pastel ||= Pastel.new(enabled: $stdout.tty?)
+      @pastel ||= defined?(Pastel) ? Pastel.new(enabled: $stdout.tty?) : NullPastel.new
+    end
+
+    class NullPastel
+      def method_missing(method, *args)
+        args.last.to_s # Return the text without coloring
+      end
+      
+      def respond_to_missing?(method, include_private = false)
+        true
+      end
     end
 
     # Deterministic color for a given agent name (e.g., "llm_agent")
