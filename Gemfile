@@ -41,6 +41,7 @@ gem "thruster", require: false
 ## Gemfile
 gem "openai", "~> 0.17"
 gem "ruby-mcp-client"
+gem "pg", "~> 1.5"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem

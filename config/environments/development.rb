@@ -73,4 +73,8 @@ Rails.application.configure do
   # Fix Rails 8 logging compatibility issue
   config.logger = ActiveSupport::Logger.new(STDOUT)
   config.log_level = :debug
+  
+  # Enable streaming responses for SSE
+  config.force_ssl = false
+  config.allow_concurrency = true
 end

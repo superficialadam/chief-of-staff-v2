@@ -8,6 +8,7 @@ Rails.application.routes.draw do
   # AI chat routes
   get "ai" => "ai#index"
   post "ai/chat" => "ai#chat"
+  post "ai/stream" => "ai#stream"
   get "ai/health" => "ai#health"
 
   # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
