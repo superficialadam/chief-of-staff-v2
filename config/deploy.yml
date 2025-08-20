@@ -6,11 +6,7 @@ image: ghcr.io/superficialadam/chief-of-staff-v2
 
 # Deploy to these servers.
 servers:
-  web:
-    hosts:
-      - 65.21.198.81
-    options:
-      network: host
+  - 65.21.198.81
 
 # SSH settings
 ssh:
