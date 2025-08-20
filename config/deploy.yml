@@ -33,6 +33,7 @@ env:
   secret:
     - RAILS_MASTER_KEY
     - OPENAI_PASSWORD
+    - OPENAI_API_KEY
     - PGHOST
     - PGPORT
     - PGDATABASE
