@@ -6,7 +6,11 @@ image: ghcr.io/superficialadam/chief-of-staff-v2
 
 # Deploy to these servers.
 servers:
-  - 65.21.198.81
+  web:
+    hosts:
+      - 65.21.198.81
+    options:
+      user: adam
 
 # Kamal proxy handles TLS + routing on the same box
 proxy:
