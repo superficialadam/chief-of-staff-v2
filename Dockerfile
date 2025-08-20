@@ -31,7 +31,14 @@ ENV RAILS_ENV="production" \
 #######################
 # Build — compile stage
 #######################
-FROM base AS build
+FROM docker.io/library/ruby:$RUBY_VERSION AS build
+WORKDIR /rails
+
+# Production bundler/Rails env
+ENV RAILS_ENV="production" \
+    BUNDLE_DEPLOYMENT="1" \
+    BUNDLE_PATH="/usr/local/bundle" \
+    BUNDLE_WITHOUT="development:test"
 
 # Build deps for native gems + Node for asset builds (if using js/css bundling)
 RUN apt-get update -qq && \

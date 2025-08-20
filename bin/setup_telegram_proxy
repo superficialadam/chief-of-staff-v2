@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# Setup script for Telegram webhook proxy configuration
+# This configures the Kamal proxy to handle both dev and prod modes
+
+set -e
+
+echo "Setting up Telegram webhook proxy configuration..."
+
+# Check if we're in dev or prod mode
+if [ "$1" == "dev" ]; then
+  echo "Configuring for DEVELOPMENT mode (reverse tunnel)..."
+  
+  # Create Kamal proxy configuration for dev mode
+  # This forwards /webhooks/telegram to the reverse tunnel port
+  cat << 'EOF' > telegram_proxy_dev.yml
+# Kamal proxy configuration for Telegram webhook in dev mode
+# This forwards webhook traffic through reverse tunnel to local Mac
+
+servers:
+  - 65.21.198.81
+
+proxy:
+  host: cos.dev.its75am.com
+  ssl: true
+  deploy_options:
+    publish:
+      - "443:443"
+      - "80:80"
+  options:
+    network: host
+    
+  # Custom routing for development
+  # The reverse tunnel listens on 127.0.0.1:4000
+  routes:
+    - path: /webhooks/telegram
+      service: telegram-dev
+      
+services:
+  telegram-dev:
+    servers:
+      - 127.0.0.1:4000
+EOF
+
+  echo "Dev proxy configuration created."
+  echo ""
+  echo "To use development mode:"
+  echo "1. Start Rails locally: rails s"
+  echo "2. Open reverse SSH tunnel: ssh -R 4000:localhost:3000 root@65.21.198.81"
+  echo "3. Deploy proxy config: kamal proxy boot_config telegram_proxy_dev.yml"
+  
+elif [ "$1" == "prod" ]; then
+  echo "Configuring for PRODUCTION mode (direct container)..."
+  
+  # In production, the default Kamal configuration handles everything
+  echo "Production mode uses standard Kamal proxy configuration."
+  echo "The /webhooks/telegram path is routed directly to the Rails container."
+  echo ""
+  echo "To deploy in production:"
+  echo "1. Ensure environment variables are set in 1Password"
+  echo "2. Run: kamal deploy"
+  
+else
+  echo "Usage: $0 [dev|prod]"
+  echo ""
+  echo "  dev  - Configure for development with reverse tunnel"
+  echo "  prod - Configure for production deployment"
+  exit 1
+fi
+
+echo ""
+echo "Configuration complete!"

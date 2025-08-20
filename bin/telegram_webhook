@@ -1,0 +1,193 @@
+#!/usr/bin/env ruby
+
+# Script to manage Telegram webhook registration
+# Usage: bin/telegram_webhook [register|info|delete]
+
+require 'faraday'
+require 'json'
+require 'optparse'
+
+class TelegramWebhookManager
+  def initialize
+    @bot_token = ENV['TELEGRAM_BOT_TOKEN']
+    @webhook_url = ENV['TELEGRAM_WEBHOOK_URL'] || 'https://cos.dev.its75am.com/webhooks/telegram'
+    
+    if @bot_token.nil? || @bot_token.empty?
+      puts "Error: TELEGRAM_BOT_TOKEN environment variable is not set"
+      puts ""
+      puts "Please run with 1Password CLI:"
+      puts "  op run --env-file=.env -- bin/telegram_webhook [command]"
+      puts ""
+      puts "Or set it directly:"
+      puts "  export TELEGRAM_BOT_TOKEN='your_bot_token'"
+      exit 1
+    end
+    
+    # Check if it's still a 1password reference (not resolved by op run)
+    if @bot_token.start_with?('op://')
+      puts "Error: 1Password reference not resolved: #{@bot_token}"
+      puts ""
+      puts "Please use 'op run' to resolve 1Password references:"
+      puts "  op run --env-file=.env -- bin/telegram_webhook [command]"
+      exit 1
+    end
+    
+    @base_url = "https://api.telegram.org/bot#{@bot_token}"
+  end
+  
+  def register
+    puts "Registering webhook: #{@webhook_url}"
+    
+    payload = {
+      url: @webhook_url,
+      allowed_updates: ['message', 'edited_message', 'callback_query'],
+      drop_pending_updates: false,
+      max_connections: 40
+    }
+    
+    response = make_request('setWebhook', payload)
+    
+    if response['ok']
+      puts "✅ Webhook registered successfully!"
+      puts "URL: #{@webhook_url}"
+      get_info
+    else
+      puts "❌ Failed to register webhook: #{response['description']}"
+      exit 1
+    end
+  end
+  
+  def get_info
+    puts "\nFetching current webhook info..."
+    
+    response = make_request('getWebhookInfo')
+    
+    if response['ok']
+      info = response['result']
+      puts "\n📊 Webhook Status:"
+      puts "  URL: #{info['url'] || 'Not set'}"
+      puts "  Pending updates: #{info['pending_update_count'] || 0}"
+      puts "  Last error: #{info['last_error_message'] || 'None'}"
+      puts "  Last error date: #{format_timestamp(info['last_error_date'])}"
+      puts "  Max connections: #{info['max_connections'] || 40}"
+      puts "  Allowed updates: #{info['allowed_updates']&.join(', ') || 'All'}"
+      
+      if info['url'].nil? || info['url'].empty?
+        puts "\n⚠️  No webhook is currently set"
+      end
+    else
+      puts "❌ Failed to get webhook info: #{response['description']}"
+      exit 1
+    end
+  end
+  
+  def delete
+    puts "Deleting webhook..."
+    
+    response = make_request('deleteWebhook', { drop_pending_updates: true })
+    
+    if response['ok']
+      puts "✅ Webhook deleted successfully!"
+    else
+      puts "❌ Failed to delete webhook: #{response['description']}"
+      exit 1
+    end
+  end
+  
+  def test_connection
+    puts "Testing bot connection..."
+    
+    response = make_request('getMe')
+    
+    if response['ok']
+      bot = response['result']
+      puts "✅ Connected to bot: @#{bot['username']}"
+      puts "  Name: #{bot['first_name']}"
+      puts "  ID: #{bot['id']}"
+      puts "  Can join groups: #{bot['can_join_groups']}"
+      puts "  Can read messages: #{bot['can_read_all_group_messages']}"
+    else
+      puts "❌ Failed to connect to bot: #{response['description']}"
+      exit 1
+    end
+  end
+  
+  private
+  
+  def make_request(method, payload = {})
+    url = "#{@base_url}/#{method}"
+    
+    response = Faraday.post(url) do |req|
+      req.headers['Content-Type'] = 'application/json'
+      req.body = payload.to_json
+      req.options.timeout = 10
+    end
+    
+    JSON.parse(response.body)
+  rescue Faraday::Error => e
+    puts "Network error: #{e.message}"
+    exit 1
+  rescue JSON::ParserError => e
+    puts "Failed to parse response: #{e.message}"
+    exit 1
+  end
+  
+  
+  def format_timestamp(timestamp)
+    return 'Never' if timestamp.nil? || timestamp == 0
+    Time.at(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+  end
+end
+
+# Parse command line options
+options = {}
+parser = OptionParser.new do |opts|
+  opts.banner = "Usage: bin/telegram_webhook [command] [options]"
+  opts.separator ""
+  opts.separator "Commands:"
+  opts.separator "  register    Register the webhook with Telegram"
+  opts.separator "  info        Get current webhook information"
+  opts.separator "  delete      Delete the webhook"
+  opts.separator "  test        Test bot connection"
+  opts.separator ""
+  opts.separator "Options:"
+  
+  opts.on("-u", "--url URL", "Override webhook URL") do |url|
+    ENV['TELEGRAM_WEBHOOK_URL'] = url
+  end
+  
+  opts.on("-h", "--help", "Show this help message") do
+    puts opts
+    exit
+  end
+end
+
+parser.parse!
+
+# Get the command
+command = ARGV[0]
+
+if command.nil?
+  puts parser
+  exit 1
+end
+
+# Execute the command
+manager = TelegramWebhookManager.new
+
+case command.downcase
+when 'register'
+  manager.test_connection
+  manager.register
+when 'info'
+  manager.test_connection
+  manager.get_info
+when 'delete'
+  manager.delete
+when 'test'
+  manager.test_connection
+else
+  puts "Unknown command: #{command}"
+  puts parser
+  exit 1
+end

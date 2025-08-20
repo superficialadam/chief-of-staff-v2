@@ -38,6 +38,8 @@ env:
     - PGDATABASE
     - PGUSER
     - PGPASSWORD
+    - TELEGRAM_BOT_TOKEN
+    - TELEGRAM_CHAT_ID
 
 # Persist Active Storage uploads (host path you can back up)
 volumes:

@@ -406,6 +406,7 @@ DEPENDENCIES
   brakeman
   capybara
   debug
+  faraday (~> 2.0)
   importmap-rails
   kamal
   openai (~> 0.17)
