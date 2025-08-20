@@ -2,7 +2,7 @@
 # check=error=true
 
 # Make sure RUBY_VERSION matches your .ruby-version
-ARG RUBY_VERSION=3.3.6
+ARG RUBY_VERSION=3.4.2
 # Bump to force cache busts when iterating
 ARG CACHE_BUSTER=1
 
@@ -54,7 +54,7 @@ RUN apt-get update -qq && \
 
 # Install gems first for better caching
 COPY Gemfile Gemfile.lock ./
-RUN bundle install && \
+RUN MAKE_OPTS="-j1" bundle install && \
     rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git
 
 # If bootsnap is present in the bundle, precompile its caches for gems
