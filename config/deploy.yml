@@ -15,6 +15,7 @@ ssh:
 # Kamal proxy handles TLS + routing on the same box
 proxy:
   host: cos.dev.its75am.com
+  app_port: 80
   healthcheck:
     path: /up
     interval: 5
@@ -52,6 +53,22 @@ volumes:
 
 # Bridge fingerprinted assets between versions to avoid 404s on deploy
 asset_path: /rails/public/assets
+
+# PostgreSQL as accessory
+accessories:
+  postgres:
+    image: postgres:15
+    host: 65.21.198.81
+    options:
+      network-alias: postgres
+    env:
+      clear:
+        POSTGRES_DB: chief_of_staff
+        POSTGRES_USER: cos_app
+      secret:
+        - POSTGRES_PASSWORD
+    volumes:
+      - /var/lib/cos/postgres:/var/lib/postgresql/data
 
 # Builder options
 builder:
