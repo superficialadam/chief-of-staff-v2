@@ -1,6 +1,5 @@
 # syntax=docker/dockerfile:1
 # check=error=true
-
 # This Dockerfile is designed for production, not development. Use with Kamal or build'n'run by hand:
 #   docker build -t chief_of_staff_v2 .
 #   docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name chief_of_staff_v2 chief_of_staff_v2
@@ -34,11 +33,22 @@ RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y build-essential git libyaml-dev pkg-config libpq-dev && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
+# Install Node.js and Yarn for JavaScript asset compilation
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh && \
+    bash nodesource_setup.sh && \
+    apt-get install -y nodejs && \
+    npm install --global yarn && \
+    rm -f nodesource_setup.sh
+
 # Install application gems
 COPY Gemfile Gemfile.lock ./
 RUN bundle install && \
     rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
     bundle exec bootsnap precompile --gemfile
+
+# Copy package.json and install JavaScript dependencies (if they exist)
+COPY package.json yarn.lock* ./
+RUN if [ -f "package.json" ]; then yarn install --frozen-lockfile; fi
 
 # Copy application code
 COPY . .
