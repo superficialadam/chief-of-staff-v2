@@ -58,8 +58,7 @@ RUN bundle info bootsnap >/dev/null 2>&1 && bundle exec bootsnap precompile --ge
 COPY . .
 
 # If bootsnap is present, precompile app/lib caches (optional optimization)
-RUN bundle info bootsnap >/dev/null 2>&1 && bundle exec bootsnap precompile app/ lib/ || true
-
+RUN DISABLE_BOOTSNAP=1 SECRET_KEY_BASE_DUMMY=1 bundle exec rails assets:precompile --trace
 # If using js/css bundling these will no-op when no package.json
 RUN test -f package.json && npm ci || true
 RUN test -f package.json && npm run build || true
