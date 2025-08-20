@@ -10,9 +10,14 @@ default: &default
   timeout: 5000
 
 development:
-  <<: *default
-  database: storage/development.sqlite3
-
+  adapter: postgresql
+  encoding: unicode
+  host: <%= ENV["PGHOST"] %>
+  port: <%= ENV["PGPORT"] %>
+  database: <%= ENV["PGDATABASE"] %>
+  username: <%= ENV["PGUSER"] %>
+  password: <%= ENV["PGPASSWORD"] %>
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS", 10) %>
 # Warning: The database defined as "test" will be erased and
 # re-generated from your development database when you run "rake".
 # Do not set this db to the same as development or production.

@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# db_tunnel — single script that Just Works™
+# Usage: db_tunnel [LOCAL_PORT] [USER@HOST]
+# Defaults: LOCAL_PORT=5433, USER@HOST=adam@65.21.198.81
+
+set -euo pipefail
+
+PORT="${1:-5433}"
+SERVER="${2:-adam@65.21.198.81}"
+
+echo "Starting DB tunnel: localhost:${PORT} → ${SERVER}:5432"
+
+# Kill any existing listener on the local port (ignore if none)
+lsof -ti tcp:"$PORT" | xargs -r kill -9 || true
+
+# SSH options: fail if forwarding can't be set up, keep alive, auto-accept new host key
+OPTS=(
+  -o ExitOnForwardFailure=yes
+  -o ServerAliveInterval=60
+  -o ServerAliveCountMax=3
+  -o StrictHostKeyChecking=accept-new
+)
+
+# Try BACKGROUND first (quiet). If it fails (auth/host key/etc), fall back to FOREGROUND verbose.
+set +e
+ssh -f -N -L "${PORT}:localhost:5432" "${OPTS[@]}" "$SERVER" 2>/tmp/db_tunnel.err
+RC=$?
+set -e
+
+if [[ $RC -eq 0 ]]; then
+  echo "Tunnel ready: localhost:${PORT} → ${SERVER}:5432"
+  lsof -iTCP:"$PORT" -sTCP:LISTEN | sed -n '2,3p' || true
+  exit 0
+fi
+
+echo "Background tunnel failed, falling back to foreground (showing SSH output)…"
+echo "--- ssh stderr ---"
+sed -n '1,50p' /tmp/db_tunnel.err || true
+echo "------------------"
+echo "If this is the first connection, you'll be prompted once. Leave this running."
+exec ssh -vv -N -L "${PORT}:localhost:5432" "${OPTS[@]}" "$SERVER"

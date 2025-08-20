@@ -94,7 +94,90 @@ rescue => e
   false
 end
 
-# Send message to server
+# Send message to server with streaming support
+def send_message_stream(base_url, message)
+  uri = URI.parse("#{base_url}/ai/stream")
+  http = Net::HTTP.new(uri.host, uri.port)
+  http.use_ssl = uri.scheme == "https"
+  http.read_timeout = 120 # Allow longer timeout for AI processing
+  
+  request = Net::HTTP::Post.new(uri.path)
+  request["Content-Type"] = "application/json"
+  request["Accept"] = "text/event-stream"
+  request.body = JSON.generate({ message: message })
+  
+  result = nil
+  processing_shown = false
+  
+  http.request(request) do |response|
+    if response.code != "200"
+      error_data = JSON.parse(response.read_body) rescue { "error" => response.read_body }
+      raise "Server error (#{response.code}): #{error_data["error"]}"
+    end
+    
+    buffer = ""
+    response.read_body do |chunk|
+      buffer += chunk
+      
+      # Process complete SSE messages
+      while buffer.include?("\n\n")
+        event_data = buffer.slice!(0..buffer.index("\n\n")+1)
+        
+        # Parse SSE event
+        if event_data =~ /event:\s*(\w+)\ndata:\s*(.+)\n/
+          event_type = $1
+          event_json = $2
+          
+          begin
+            data = JSON.parse(event_json)
+            
+            case event_type
+            when "start"
+              # Show processing indicator
+              unless processing_shown
+                print ConsoleColors.dim("Processing")
+                processing_shown = true
+              end
+              $stdout.flush
+            when "iteration"
+              # Show iteration progress
+              print ConsoleColors.dim(" [#{data["number"]}/#{data["max"]}]")
+              $stdout.flush
+            when "tool_start"
+              # Show tool execution
+              print ConsoleColors.dim(" #{data["name"]}")
+              $stdout.flush
+            when "tool_complete"
+              # Show tool completion status
+              if data["success"]
+                print ConsoleColors.dim("✓")
+              else
+                print ConsoleColors.dim("✗")
+              end
+              $stdout.flush
+            when "complete"
+              # Clear processing indicator and return result
+              puts "" if processing_shown
+              result = data
+              break
+            when "error"
+              puts "" if processing_shown
+              raise "Server error: #{data["error"]}"
+            end
+          rescue JSON::ParserError
+            # Ignore malformed events
+          end
+        end
+      end
+      
+      break if result
+    end
+  end
+  
+  result
+end
+
+# Legacy non-streaming send (fallback)
 def send_message(base_url, message)
   uri = URI.parse("#{base_url}/ai/chat")
   http = Net::HTTP.new(uri.host, uri.port)
@@ -164,8 +247,15 @@ loop do
       next
     end
     
+    # Show immediate processing indicator
+    print ConsoleColors.dim("Processing...")
+    $stdout.flush
+    
     # Send message to server
     result = send_message(base_url, input)
+    
+    # Clear processing indicator
+    print "\r" + " " * 20 + "\r"  # Clear the line
     
     # Display response
     agent_name = result["agent"] || "unknown"

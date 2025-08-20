@@ -10,6 +10,11 @@ module Ai
       boot_once!
       @agent.step!(input)
     end
+    
+    def run_with_progress!(input, &block)
+      boot_once!
+      @agent.step_with_progress!(input, &block)
+    end
 
     def health
       boot_once!

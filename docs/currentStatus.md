@@ -520,7 +520,47 @@ chief-of-staff-v2/
 - `config/environments/development.rb` - Fixed Rails 8 logging
 - `credentials.json` - Added for MCP calendar server testing
 
+### August 18, 2025 - 15:30 CET
+
+**🔍 Performance Investigation & UI Improvements**
+
+**Problem Identified:**
+- Users experienced 10-15 second delays in REPL with no feedback
+- Server logs showed immediate processing, but responses appeared much later
+- Both web and CLI interfaces affected equally
+
+**Root Cause Analysis:**
+- Added detailed timing logs to LlmAgent
+- Discovered delay breakdown:
+  - OpenAI API call 1: ~2 seconds (decides to call tools)
+  - MCP tool execution: <1 second (calendar data retrieved quickly) 
+  - OpenAI API call 2: ~6-8 seconds (processes tool results and generates response)
+- Total delay was legitimate processing time, not a buffering issue
+
+**Solution Implemented:**
+- **Simple "Processing..." indicator in CLI client**
+  - Shows immediately after user input
+  - Provides visual feedback during the 8+ second OpenAI processing
+  - Much simpler than complex SSE streaming initially attempted
+
+**Files Modified:**
+- `bin/ai` - Added immediate "Processing..." feedback indicator
+- `app/agents/llm_agent.rb` - Added detailed timing logs for performance analysis
+- `app/controllers/ai_controller.rb` - Prepared SSE streaming endpoint (not needed)
+- `config/routes.rb` - Added `/ai/stream` route (kept for future use)
+- `config/environments/development.rb` - Added streaming configuration
+
+**Key Learnings:**
+- Not all delays are technical bottlenecks - sometimes it's just processing time
+- Simple UX improvements (like "Processing...") can be more effective than complex technical solutions
+- Always measure first before optimizing - the logs revealed the true source of delay
+
+**Current Performance:**
+- MCP tools execute in <1 second
+- OpenAI API calls take 2-8 seconds depending on complexity
+- User now sees immediate feedback instead of silent waiting
+
 ---
 
-This documentation represents the current state of the Chief of Staff v2 implementation as of August 17, 2025.
+This documentation represents the current state of the Chief of Staff v2 implementation as of August 18, 2025.
 
