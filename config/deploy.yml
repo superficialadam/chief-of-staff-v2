@@ -12,6 +12,10 @@ servers:
 ssh:
   user: adam
 
+# Use host network mode to access PostgreSQL on localhost
+options:
+  network: host
+
 # Kamal proxy handles TLS + routing on the same box
 proxy:
   host: cos.dev.its75am.com

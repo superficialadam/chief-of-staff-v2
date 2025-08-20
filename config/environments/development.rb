@@ -11,6 +11,11 @@ Rails.application.configure do
 
   # Show full error reports.
   config.consider_all_requests_local = true
+  
+  # Allow requests from telegram webhook and local development
+  config.hosts << "telegram.dev.its75am.com"
+  config.hosts << "127.0.0.1"
+  config.hosts << "localhost"
 
   # Enable server timing.
   config.server_timing = true
