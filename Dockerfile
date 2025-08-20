@@ -49,14 +49,16 @@ RUN apt-get update -qq && \
 COPY Gemfile Gemfile.lock ./
 RUN --mount=type=cache,target=${BUNDLE_PATH} \
     bundle install && \
-    rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
-    bundle exec bootsnap precompile --gemfile
+    rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git
+
+# If bootsnap is present in the bundle, precompile its caches for gems
+RUN bundle info bootsnap >/dev/null 2>&1 && bundle exec bootsnap precompile --gemfile || true
 
 # Copy app code
 COPY . .
 
-# Precompile bootsnap cache
-RUN bundle exec bootsnap precompile app/ lib/
+# If bootsnap is present, precompile app/lib caches (optional optimization)
+RUN bundle info bootsnap >/dev/null 2>&1 && bundle exec bootsnap precompile app/ lib/ || true
 
 # If using js/css bundling these will no-op when no package.json
 RUN test -f package.json && npm ci || true
@@ -66,7 +68,7 @@ RUN test -f package.json && npm run build || true
 RUN SECRET_KEY_BASE_DUMMY=1 bin/rails assets:precompile
 
 ############################
-# Debug stage (optional, fast local investigation)
+# Debug stage (optional, for fast local investigation)
 ############################
 FROM build AS debug
 CMD ["/bin/bash"]
