@@ -54,7 +54,7 @@ volumes:
 # Bridge fingerprinted assets between versions to avoid 404s on deploy
 asset_path: /rails/public/assets
 
-# PostgreSQL as accessory
+# PostgreSQL as accessory (managed by Kamal)
 accessories:
   postgres:
     image: postgres:15
