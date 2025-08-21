@@ -16,6 +16,7 @@ ssh:
 proxy:
   host: cos.dev.its75am.com
   app_port: 80
+  ssl: true
   healthcheck:
     path: /up
     interval: 5

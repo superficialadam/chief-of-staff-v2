@@ -18,6 +18,13 @@ module Ai
     def boot!(strict: false)
       return if @booted
       
+      # Skip MCP in production for now
+      if Rails.env.production?
+        Rails.logger.info "MCP Manager disabled in production"
+        @booted = true
+        return
+      end
+      
       load_config
       
       begin
@@ -56,16 +63,21 @@ module Ai
     end
 
     def openai_tools
+      return [] if Rails.env.production?  # MCP disabled in production
       return [] unless @booted && @client
       @client.to_openai_tools || []
     end
 
     def anthropic_tools
+      return [] if Rails.env.production?  # MCP disabled in production
       return [] unless @booted && @client
       @client.to_anthropic_tools || []
     end
 
     def call_tool(name, parameters = {})
+      if Rails.env.production?
+        return { error: "MCP disabled in production" }
+      end
       raise "MCP Manager not booted" unless @booted && @client
       
       result = @client.call_tool(name, parameters)
