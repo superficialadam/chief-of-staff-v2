@@ -54,25 +54,20 @@ volumes:
 # Bridge fingerprinted assets between versions to avoid 404s on deploy
 asset_path: /rails/public/assets
 
-# PostgreSQL as accessory (managed by Kamal)
-accessories:
-  postgres:
-    image: postgres:15
-    host: 65.21.198.81
-    options:
-      network-alias: postgres
-    env:
-      clear:
-        POSTGRES_DB: chief_of_staff
-        POSTGRES_USER: cos_app
-      secret:
-        - POSTGRES_PASSWORD
-    volumes:
-      - /var/lib/cos/postgres:/var/lib/postgresql/data
+# PostgreSQL running on host - not managed by Kamal
+# accessories: (removed - using existing database)
 
 # Builder options
 builder:
   arch: amd64
+
+# Runtime options
+servers:
+  web:
+    hosts:
+      - 65.21.198.81
+    options:
+      add-host: ["host.docker.internal:host-gateway"]
 
 # Handy aliases
 aliases:
