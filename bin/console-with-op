@@ -1,0 +1,4 @@
+#!/bin/bash
+  # Load 1Password env vars and start Rails console
+  eval $(op run --env-file=.env.development -- printenv)
+  exec rails console
