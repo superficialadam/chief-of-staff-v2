@@ -6,11 +6,9 @@ if [ -z "${LD_PRELOAD+x}" ]; then
     export LD_PRELOAD
 fi
 
-# If running the rails server then create or migrate existing database
-if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
-  echo "Running db:prepare..."
-  echo "Skipping db:prepare for debugging"
-  # ./bin/rails db:prepare || echo "db:prepare failed with exit code $?"
-fi
+# Skip db:prepare - database is already set up and managed separately
+# if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
+#   ./bin/rails db:prepare
+# fi
 
 exec "${@}"
