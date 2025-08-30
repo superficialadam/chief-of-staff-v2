@@ -41,9 +41,9 @@ class CalendarAgent < BaseAgent
           event[:title] = $1
         when /^Event ID: (.+)$/
           event[:id] = $1
-        when /^Start: (.+)$/
+        when /^Start(?: Date)?: (.+)$/
           event[:start] = $1.strip
-        when /^End: (.+)$/
+        when /^End(?: Date)?: (.+)$/
           event[:end] = $1.strip
         when /^Location: (.+)$/
           event[:location] = $1.strip
