@@ -41,7 +41,7 @@ gem "thruster", require: false
 ## Gemfile
 gem "openai", "~> 0.17"
 gem "ruby-mcp-client"
-gem "pg", "~> 1.5"
+gem "pg", "~> 1.6"
 
 # Telegram integration
 gem "faraday", "~> 2.0"
