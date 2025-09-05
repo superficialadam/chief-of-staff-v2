@@ -39,7 +39,7 @@ gem "thruster", require: false
 # gem "image_processing", "~> 1.2"
 #
 ## Gemfile
-gem "openai", "~> 0.17"
+gem "openai", "~> 0.22"
 gem "ruby-mcp-client"
 gem "pg", "~> 1.5"
 
