@@ -44,7 +44,7 @@ gem "ruby-mcp-client"
 gem "pg", "~> 1.5"
 
 # Telegram integration
-gem "faraday", "~> 2.0"
+gem "faraday", "~> 2.14"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
